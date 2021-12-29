@@ -3,10 +3,11 @@ import { Program } from "@project-serum/anchor";
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, Token, NATIVE_MINT } from "@solana/spl-token";
 import { BountySystem } from '../target/types/bounty_system';
+import {assert} from "chai";
 
 const TEST_COUNTER_EXAMPLE = false;
-const AUTH_PDA_SEED = "auth_pda_seed";
-const WSOL_POOL_SEED = "pool_wrapped_sol_seed";
+const AUTH_PDA_SEED = "auth_pda_seeds";
+const WSOL_POOL_SEED = "pool_wrapped_sol_seeds";
 
 function to_lamports(num_sol) {
     return Math.round(num_sol * 1e9);
@@ -20,14 +21,17 @@ describe("bounty_system", () => {
     const program = anchor.workspace.BountySystem as Program<BountySystem>;
 
     // account variables
-    let wrappedSolAta: PublicKey = null;
     let authPda: PublicKey = null;
-    let poolWrappedSol: PublicKey = null; // lookup as pda or ata?
+    let poolTbo: PublicKey = null; // lookup as pda or ata?
     const owner1 = Keypair.generate();
     const owner2 = Keypair.generate();
     const owner3 = Keypair.generate();
+    const mintAuthority = Keypair.generate();
+
+    let tboMint: Token = null;
 
     it("Create test accounts, wrap sol, lookup PDAs.", async () => {
+
 
         // Airdropping tokens to a payer.
         await provider.connection.confirmTransaction(
@@ -45,8 +49,15 @@ describe("bounty_system", () => {
             "confirmed"
         );
 
-        // wrap sol
-        wrappedSolAta = await Token.createWrappedNativeAccount(provider.connection, TOKEN_PROGRAM_ID, owner1.publicKey, owner1, to_lamports(9));
+        // create mint
+        tboMint = await Token.createMint(
+            provider.connection,
+            owner1,
+            mintAuthority.publicKey,
+            null,
+            0,
+            TOKEN_PROGRAM_ID,
+        );
 
         // lookup pdas
         [authPda] = await PublicKey.findProgramAddress(
@@ -54,7 +65,7 @@ describe("bounty_system", () => {
             program.programId
         );
 
-        [poolWrappedSol] = await PublicKey.findProgramAddress(
+        [poolTbo] = await PublicKey.findProgramAddress(
             [Buffer.from(anchor.utils.bytes.utf8.encode(WSOL_POOL_SEED))],
             program.programId
         );
@@ -64,22 +75,16 @@ describe("bounty_system", () => {
     it("Init PDAs", async () => {
 
 
-        let owners = [owner1.publicKey, owner2.publicKey, owner3.publicKey];
-        let is_officer = [true, false, false];
-        let total_threshold = 3;
-        let officer_threshold = 1;
+        let acceptors = [owner1.publicKey, owner2.publicKey, owner3.publicKey];
 
         await program.rpc.initPdas(
-            owners,
-            is_officer,
-            new anchor.BN(total_threshold),
-            new anchor.BN(officer_threshold),
+            acceptors,
             {
                 accounts: {
                     signer: owner1.publicKey,
                     authPda: authPda,
-                    poolWrappedSol: poolWrappedSol,
-                    wsolMint: NATIVE_MINT,
+                    poolTbo: poolTbo,
+                    tboMint: tboMint.publicKey,
                     systemProgram: SystemProgram.programId,
                     tokenProgram: TOKEN_PROGRAM_ID,
                     rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -88,64 +93,78 @@ describe("bounty_system", () => {
             }
         );
 
-    });
-
-    it("Transfer wrapped sol to PDA for wrapped sol", async () => {
-
-        // check balance
-        let nativeMint = new Token(provider.connection, NATIVE_MINT, TOKEN_PROGRAM_ID, owner1);
-        let acctInfo = await nativeMint.getAccountInfo(poolWrappedSol);
-        console.log("got amount before: ", acctInfo.amount.toNumber());
-
-
-        // lookup ATA for PDA
-        const instructions: anchor.web3.TransactionInstruction[] = [];
-
-        // send wrapped sol
-        instructions.push(
-            Token.createTransferInstruction(
-                TOKEN_PROGRAM_ID,
-                wrappedSolAta,
-                poolWrappedSol,
-                owner1.publicKey,
-                [],
-                to_lamports(8),
-            )
+        // fund poolTbo from mint
+        await tboMint.mintTo(
+            poolTbo,
+            mintAuthority.publicKey,
+            [mintAuthority],
+            1000000,
         );
 
-        const transaction = new anchor.web3.Transaction().add(...instructions);
-        transaction.feePayer = owner1.publicKey;
-        transaction.recentBlockhash = (await provider.connection.getRecentBlockhash()).blockhash;
-
-        await anchor.web3.sendAndConfirmTransaction(
-            provider.connection,
-            transaction,
-            [owner1]
+        let _poolTbo = await tboMint.getAccountInfo(
+            poolTbo
         );
 
-        acctInfo = await nativeMint.getAccountInfo(poolWrappedSol);
-        console.log("got amount after: ", acctInfo.amount.toNumber());
-
+        assert.ok(_poolTbo.amount.toNumber() == 1000000);
     });
 
-    it("Propose withdraw", async () => {
+    // it("Transfer wrapped sol to PDA for wrapped sol", async () => {
+    //
+    //     // check balance
+    //     let nativeMint = new Token(provider.connection, NATIVE_MINT, TOKEN_PROGRAM_ID, owner1);
+    //     let acctInfo = await nativeMint.getAccountInfo(poolWrappedSol);
+    //     console.log("got amount before: ", acctInfo.amount.toNumber());
+    //
+    //
+    //     // lookup ATA for PDA
+    //     const instructions: anchor.web3.TransactionInstruction[] = [];
+    //
+    //     // send wrapped sol
+    //     instructions.push(
+    //         Token.createTransferInstruction(
+    //             TOKEN_PROGRAM_ID,
+    //             wrappedSolAta,
+    //             poolWrappedSol,
+    //             owner1.publicKey,
+    //             [],
+    //             to_lamports(8),
+    //         )
+    //     );
+    //
+    //     const transaction = new anchor.web3.Transaction().add(...instructions);
+    //     transaction.feePayer = owner1.publicKey;
+    //     transaction.recentBlockhash = (await provider.connection.getRecentBlockhash()).blockhash;
+    //
+    //     await anchor.web3.sendAndConfirmTransaction(
+    //         provider.connection,
+    //         transaction,
+    //         [owner1]
+    //     );
+    //
+    //     acctInfo = await nativeMint.getAccountInfo(poolWrappedSol);
+    //     console.log("got amount after: ", acctInfo.amount.toNumber());
+    //
+    // });
+    //
+    it("Create Bounty", async () => {
 
         // lookup amount in pool pda
+        let criteria = "This is another test criteria";
+        let amount = 2;
 
-        let proposed_amount = 5;
-
-        await program.rpc.proposeWithdraw(
-            wrappedSolAta,
-            new anchor.BN(to_lamports(proposed_amount)),
+        await program.rpc.createBounty(
+            criteria,
+            owner3.publicKey,
+            new anchor.BN(amount),
             {
                 accounts: {
-                    signer: owner2.publicKey,
+                    signer: owner1.publicKey,
                     authPda: authPda,
-                    poolWrappedSol: poolWrappedSol,
+                    poolTbo: poolTbo,
                     systemProgram: SystemProgram.programId,
                     tokenProgram: TOKEN_PROGRAM_ID,
                 },
-                signers: [owner2],
+                signers: [owner1],
             }
         );
 
@@ -153,57 +172,117 @@ describe("bounty_system", () => {
         let authPdaInfo = await program.account.multisigAccount.fetch(authPda);
         console.log("got auth pda info: ", authPdaInfo);
     });
+    //
+    // if (TEST_COUNTER_EXAMPLE) {
+    //
+    //     it("Test withdraw without approval", async () => {
+    //
+    //         try {
+    //             await program.rpc.executeWithdraw(
+    //                 {
+    //                     accounts: {
+    //                         signer: owner1.publicKey,
+    //                         authPda: authPda,
+    //                         poolWrappedSol: poolWrappedSol,
+    //                         proposedReceiver: wrappedSolAta,
+    //                         wsolMint: NATIVE_MINT,
+    //                         systemProgram: SystemProgram.programId,
+    //                         tokenProgram: TOKEN_PROGRAM_ID,
+    //                     },
+    //                     signers: [owner1],
+    //                 }
+    //             );
+    //
+    //             throw "withdraw should have failed";
+    //         } catch (err) {
+    //             console.log("Properly failed with error : ", err.msg);
+    //         }
+    //
+    //     });
+    // }
+    //
+    // it("Approve withdraw", async () => {
+    //
+    //     // lookup amount in pool pda
+    //
+    //     let proposed_amount = 5;
+    //
+    //     await program.rpc.approveWithdraw(
+    //         wrappedSolAta,
+    //         new anchor.BN(to_lamports(proposed_amount)),
+    //         {
+    //             accounts: {
+    //                 signer: owner1.publicKey,
+    //                 authPda: authPda,
+    //                 systemProgram: SystemProgram.programId,
+    //             },
+    //             signers: [owner1],
+    //         }
+    //     );
+    //
+    //     await program.rpc.approveWithdraw(
+    //         wrappedSolAta,
+    //         new anchor.BN(to_lamports(proposed_amount)),
+    //         {
+    //             accounts: {
+    //                 signer: owner2.publicKey,
+    //                 authPda: authPda,
+    //                 systemProgram: SystemProgram.programId,
+    //             },
+    //             signers: [owner2],
+    //         }
+    //     );
+    //
+    //     await program.rpc.approveWithdraw(
+    //         wrappedSolAta,
+    //         new anchor.BN(to_lamports(proposed_amount)),
+    //         {
+    //             accounts: {
+    //                 signer: owner3.publicKey,
+    //                 authPda: authPda,
+    //                 systemProgram: SystemProgram.programId,
+    //             },
+    //             signers: [owner3],
+    //         }
+    //     );
+    //
+    // });
+    //
+    it("Award Bounty", async () => {
 
-    if (TEST_COUNTER_EXAMPLE) {
+        // check balance
+        const receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(owner3.publicKey);
+        console.log("got amount before: ", receiverAta.amount.toNumber());
 
-        it("Test withdraw without approval", async () => {
+        // get or create token account for give pubkey owner3
 
-            try {
-                await program.rpc.executeWithdraw(
-                    {
-                        accounts: {
-                            signer: owner1.publicKey,
-                            authPda: authPda,
-                            poolWrappedSol: poolWrappedSol,
-                            proposedReceiver: wrappedSolAta,
-                            wsolMint: NATIVE_MINT,
-                            systemProgram: SystemProgram.programId,
-                            tokenProgram: TOKEN_PROGRAM_ID,
-                        },
-                        signers: [owner1],
-                    }
-                );
-
-                throw "withdraw should have failed";
-            } catch (err) {
-                console.log("Properly failed with error : ", err.msg);
-            }
-
-        });
-    }
-
-    it("Approve withdraw", async () => {
-
-        // lookup amount in pool pda
-
-        let proposed_amount = 5;
-
-        await program.rpc.approveWithdraw(
-            wrappedSolAta,
-            new anchor.BN(to_lamports(proposed_amount)),
+        await program.rpc.awardBounty(
+            new anchor.BN(1),
             {
                 accounts: {
                     signer: owner1.publicKey,
                     authPda: authPda,
+                    poolTbo: poolTbo,
+                    proposedReceiver: receiverAta.address,
+                    tboMint: tboMint.publicKey,
                     systemProgram: SystemProgram.programId,
+                    tokenProgram: TOKEN_PROGRAM_ID,
                 },
                 signers: [owner1],
             }
         );
 
-        await program.rpc.approveWithdraw(
-            wrappedSolAta,
-            new anchor.BN(to_lamports(proposed_amount)),
+        let acctInfo = await tboMint.getAccountInfo(receiverAta.address);
+        console.log("got amount after: ", acctInfo.amount.toNumber());
+
+    });
+
+    it("Cancel Bounty", async () => {
+
+        // get or create token account for give pubkey owner3
+
+        await program.rpc.cancelBounty(
+            new anchor.BN(0),
             {
                 accounts: {
                     signer: owner2.publicKey,
@@ -213,46 +292,6 @@ describe("bounty_system", () => {
                 signers: [owner2],
             }
         );
-
-        await program.rpc.approveWithdraw(
-            wrappedSolAta,
-            new anchor.BN(to_lamports(proposed_amount)),
-            {
-                accounts: {
-                    signer: owner3.publicKey,
-                    authPda: authPda,
-                    systemProgram: SystemProgram.programId,
-                },
-                signers: [owner3],
-            }
-        );
-
-    });
-
-    it("Execute Withdraw", async () => {
-
-        // check balance
-        let nativeMint = new Token(provider.connection, NATIVE_MINT, TOKEN_PROGRAM_ID, owner1);
-        let acctInfo = await nativeMint.getAccountInfo(wrappedSolAta);
-        console.log("got amount before: ", acctInfo.amount.toNumber());
-
-        await program.rpc.executeWithdraw(
-            {
-                accounts: {
-                    signer: owner1.publicKey,
-                    authPda: authPda,
-                    poolWrappedSol: poolWrappedSol,
-                    proposedReceiver: wrappedSolAta,
-                    wsolMint: NATIVE_MINT,
-                    systemProgram: SystemProgram.programId,
-                    tokenProgram: TOKEN_PROGRAM_ID,
-                },
-                signers: [owner1],
-            }
-        );
-
-        acctInfo = await nativeMint.getAccountInfo(wrappedSolAta);
-        console.log("got amount after: ", acctInfo.amount.toNumber());
 
     });
 

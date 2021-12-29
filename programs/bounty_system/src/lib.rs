@@ -72,7 +72,7 @@ pub mod bounty_system {
 
     pub fn cancel_bounty(
         ctx: Context<CancelBounty>,
-        index: usize,
+        index: u64,
     ) -> ProgramResult {
 
         // check if signer is owner
@@ -84,19 +84,19 @@ pub mod bounty_system {
             .ok_or(ErrorCode::InvalidOwner)?;
 
         // check signer is acceptor of bounty
-        if *ctx.accounts.signer.key != ctx.accounts.auth_pda.bounties[index].acceptor{
+        if *ctx.accounts.signer.key != ctx.accounts.auth_pda.bounties[index as usize].acceptor{
             return Err(ErrorCode::InvalidOwner.into());
         }
 
         // delete bounty
-        ctx.accounts.auth_pda.bounties.remove(index);
+        ctx.accounts.auth_pda.bounties.remove(index as usize);
 
         Ok(())
     }
 
     pub fn award_bounty(
         ctx: Context<AwardBounty>,
-        index: usize,
+        index: u64,
     ) -> ProgramResult {
 
         // check if signer is owner
@@ -108,7 +108,7 @@ pub mod bounty_system {
             .ok_or(ErrorCode::InvalidOwner)?;
 
         // check signer is acceptor of bounty
-        if *ctx.accounts.signer.key != ctx.accounts.auth_pda.bounties[index].acceptor{
+        if *ctx.accounts.signer.key != ctx.accounts.auth_pda.bounties[index as usize].acceptor{
             return Err(ErrorCode::InvalidOwner.into());
         }
 
@@ -126,7 +126,7 @@ pub mod bounty_system {
         // if auth_pda.bounties[index].hunter != ctx.accounts.proposed_receiver.key {
         //
         // }
-        let amount = auth_pda.bounties[index].amount;
+        let amount = auth_pda.bounties[index as usize].amount;
 
         let cpi_accounts = Transfer {
             from: ctx.accounts.pool_tbo.to_account_info(),
@@ -138,7 +138,7 @@ pub mod bounty_system {
         token::transfer(cpi_ctx, amount)?;
 
         // delete bounty
-        ctx.accounts.auth_pda.bounties.remove(index);
+        ctx.accounts.auth_pda.bounties.remove(index as usize);
 
         Ok(())
     }
@@ -153,8 +153,8 @@ pub struct InitPdas<'info> {
         seeds = [AUTH_PDA_SEED],
         bump,
         payer = signer,
-        space = 100000)] // lazy - 300 bounties
-    pub auth_pda: Box<Account<'info, MultisigAccount>>,
+        space = 10000)] // TODO allocate not as inner instruction... lazy - 30 bounties, (how did i do this with NFTS?...)
+    pub auth_pda: Account<'info, MultisigAccount>,
     #[account(
         init,
         token::mint = tbo_mint,
@@ -162,7 +162,7 @@ pub struct InitPdas<'info> {
         seeds = [WSOL_POOL_SEED],
         bump,
         payer = signer)]
-    pub pool_obo: Box<Account<'info, TokenAccount>>,
+    pub pool_tbo: Box<Account<'info, TokenAccount>>,
     pub tbo_mint: Box<Account<'info, Mint>>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
