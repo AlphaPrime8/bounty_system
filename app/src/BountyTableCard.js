@@ -34,7 +34,7 @@ const BountyTableCard = ({ approveWithdraw, multisigState }) => {
                         <th>Amount (#TBO)</th>
                         <th>Est. Amount ($)</th>
                         <th>Acceptor</th>
-                        <th>Close</th>
+                        <th>Award</th>
                         <th>Cancel</th>
                     </tr>
                     {sample_bounties.map((bounty, i) => {
@@ -45,7 +45,7 @@ const BountyTableCard = ({ approveWithdraw, multisigState }) => {
                                 <td>{bounty.amount}</td>
                                 <td>{bounty.amount * 6000}</td>
                                 <td>{format_pk(bounty.acceptor)}</td>
-                                <td><button>close</button></td>
+                                <td><button>award</button></td>
                                 <td><button>cancel</button></td>
                             </tr>
                         );
