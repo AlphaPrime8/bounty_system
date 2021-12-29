@@ -1,13 +1,13 @@
 [programs.localnet]
-bounty_system = "8tk9cckc1aVcDS9JYEg5EQxHPmDzrLnNFRAYFRJYLi5T"
+bounty_system = "EFyiucgJ2bHU9kHrvkbMvsy6UZ6pnMKZXV7H2bUmciko"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
 #cluster = "testnet"
-#cluster = "devnet"
-cluster = "localnet"
+cluster = "devnet"
+#cluster = "localnet"
 wallet = "/home/myware/.config/solana/devnet.json"
 
 [scripts]

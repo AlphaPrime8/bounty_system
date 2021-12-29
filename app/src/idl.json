@@ -1,6 +1,6 @@
 {
   "version": "0.0.0",
-  "name": "dao_multisig_treasury",
+  "name": "bounty_system",
   "instructions": [
     {
       "name": "initPdas",
@@ -16,12 +16,12 @@
           "isSigner": false
         },
         {
-          "name": "poolWrappedSol",
+          "name": "poolTbo",
           "isMut": true,
           "isSigner": false
         },
         {
-          "name": "wsolMint",
+          "name": "tboMint",
           "isMut": false,
           "isSigner": false
         },
@@ -43,29 +43,15 @@
       ],
       "args": [
         {
-          "name": "owners",
+          "name": "acceptors",
           "type": {
             "vec": "publicKey"
           }
-        },
-        {
-          "name": "isOfficer",
-          "type": {
-            "vec": "bool"
-          }
-        },
-        {
-          "name": "totalThreshold",
-          "type": "u64"
-        },
-        {
-          "name": "officerThreshold",
-          "type": "u64"
         }
       ]
     },
     {
-      "name": "proposeWithdraw",
+      "name": "createBounty",
       "accounts": [
         {
           "name": "signer",
@@ -78,7 +64,7 @@
           "isSigner": false
         },
         {
-          "name": "poolWrappedSol",
+          "name": "poolTbo",
           "isMut": false,
           "isSigner": false
         },
@@ -95,17 +81,21 @@
       ],
       "args": [
         {
-          "name": "proposedReceiver",
+          "name": "criteria",
+          "type": "string"
+        },
+        {
+          "name": "hunter",
           "type": "publicKey"
         },
         {
-          "name": "proposedAmount",
+          "name": "amount",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "approveWithdraw",
+      "name": "cancelBounty",
       "accounts": [
         {
           "name": "signer",
@@ -125,17 +115,13 @@
       ],
       "args": [
         {
-          "name": "proposedReceiver",
-          "type": "publicKey"
-        },
-        {
-          "name": "proposedAmount",
+          "name": "index",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "executeWithdraw",
+      "name": "awardBounty",
       "accounts": [
         {
           "name": "signer",
@@ -148,7 +134,7 @@
           "isSigner": false
         },
         {
-          "name": "poolWrappedSol",
+          "name": "poolTbo",
           "isMut": true,
           "isSigner": false
         },
@@ -158,7 +144,7 @@
           "isSigner": false
         },
         {
-          "name": "wsolMint",
+          "name": "tboMint",
           "isMut": false,
           "isSigner": false
         },
@@ -173,7 +159,12 @@
           "isSigner": false
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "index",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -183,42 +174,44 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "owners",
+            "name": "acceptors",
             "type": {
               "vec": "publicKey"
             }
           },
           {
-            "name": "isOfficer",
+            "name": "bounties",
             "type": {
-              "vec": "bool"
+              "vec": {
+                "defined": "Bounty"
+              }
             }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "Bounty",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "criteria",
+            "type": "string"
           },
           {
-            "name": "totalThreshold",
-            "type": "u64"
-          },
-          {
-            "name": "officerThreshold",
-            "type": "u64"
-          },
-          {
-            "name": "proposedReceiver",
+            "name": "hunter",
             "type": "publicKey"
           },
           {
-            "name": "proposedAmount",
+            "name": "acceptor",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
             "type": "u64"
-          },
-          {
-            "name": "signers",
-            "type": {
-              "vec": "bool"
-            }
-          },
-          {
-            "name": "proposalIsActive",
-            "type": "bool"
           }
         ]
       }
@@ -269,9 +262,14 @@
       "code": 308,
       "name": "InvalidVectorLengths",
       "msg": "Owners vec and is_officer vec must be same length"
+    },
+    {
+      "code": 309,
+      "name": "TooManyBounties",
+      "msg": "Too many bounties"
     }
   ],
   "metadata": {
-    "address": "8tk9cckc1aVcDS9JYEg5EQxHPmDzrLnNFRAYFRJYLi5T"
+    "address": "EFyiucgJ2bHU9kHrvkbMvsy6UZ6pnMKZXV7H2bUmciko"
   }
 }

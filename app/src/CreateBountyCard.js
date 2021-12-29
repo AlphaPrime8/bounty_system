@@ -4,10 +4,11 @@ const CreateBountyCard = ({ proposeWithdraw }) => {
 
    const [inputAmount, setInputAmount] = useState('');
    const [inputReceiver, setInputReceiver] = useState('');
+   const [inputCriteria, setInputCriteria] = useState('');
 
    function proposeCallback(){
       // get input values
-      proposeWithdraw(parseFloat(inputAmount), inputReceiver);
+      proposeWithdraw(inputCriteria, parseFloat(inputAmount), inputReceiver);
    }
 
    return (
@@ -21,14 +22,14 @@ const CreateBountyCard = ({ proposeWithdraw }) => {
                <div className='stake-card-NFT flex flex-col'>
                   <form className='stake-card-NFT-form flex flex-col'>
                      <label>Criteria</label>
-                     <input value={inputReceiver} onInput={e => setInputReceiver(e.target.value)} type='text' />
+                     <input value={inputCriteria} onInput={e => setInputCriteria(e.target.value)} type='text' />
                   </form>
                </div>
 
                <div className='stake-card-amount flex flex-col'>
                   <form className='stake-card-amount-form flex flex-col'>
                      <label>Hunter</label>
-                     <input value={inputAmount} onInput={e => setInputAmount(e.target.value)} type='text' />
+                     <input value={inputReceiver} onInput={e => setInputReceiver(e.target.value)} type='text' />
                   </form>
                </div>
 

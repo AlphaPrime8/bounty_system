@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("8tk9cckc1aVcDS9JYEg5EQxHPmDzrLnNFRAYFRJYLi5T");
+declare_id!("EFyiucgJ2bHU9kHrvkbMvsy6UZ6pnMKZXV7H2bUmciko");
 
 // config
 const AUTH_PDA_SEED: &[u8] = b"auth_pda_seeds";

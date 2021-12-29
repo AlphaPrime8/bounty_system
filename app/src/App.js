@@ -14,8 +14,8 @@ import idl from './idl.json';
 import { getPhantomWallet } from '@solana/wallet-adapter-wallets';
 import {WalletProvider, ConnectionProvider} from '@solana/wallet-adapter-react';
 import {WalletModalProvider} from '@solana/wallet-adapter-react-ui';
-import {EXPECTED_CREATOR, VAULT_PDA_SEED, PEACH_EARNED_PER_SECOND, SECONDS_PER_DAY, USER_PDA_SEED, AUTH_PDA_SEED, WSOL_POOL_SEED, DEFAULT_MULTISIG_STATE} from "./Config";
-import {NATIVE_MINT, Token} from "@solana/spl-token";
+import {EXPECTED_CREATOR, VAULT_PDA_SEED, PEACH_EARNED_PER_SECOND, SECONDS_PER_DAY, USER_PDA_SEED, AUTH_PDA_SEED, WSOL_POOL_SEED, DEFAULT_MULTISIG_STATE, TBO_MINT} from "./Config";
+import {ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, Token} from "@solana/spl-token";
 import {TOKEN_PROGRAM_ID} from "@project-serum/serum/lib/token-instructions";
 import {to_lamports, to_sol} from "./utils";
 
@@ -53,7 +53,7 @@ function App() {
 
    const [isLoading, setIsLoading] = useState(false);
 
-   const [multisigState, setMultisigState] = useState(DEFAULT_MULTISIG_STATE);
+   const [multisigState, setMultisigState] = useState([]);
    const [signersHaveApproved, setSignersHaveApproved] = useState(false);
 
    async function loadMultisigState() {
@@ -71,59 +71,26 @@ function App() {
 
       console.log("Got dao treasury addy: ", poolWrappedSol.toBuffer());
       let authPdaInfo = await program.account.multisigAccount.fetch(authPda);
-      let nativeMint = new Token(provider.connection, NATIVE_MINT, TOKEN_PROGRAM_ID, provider.wallet);
-      let acctInfo = await nativeMint.getAccountInfo(poolWrappedSol);
 
-      // unpack state info
-      const treasury_balance = acctInfo.amount.toNumber();
+      console.log(authPdaInfo);
 
-      const is_officer_arr = authPdaInfo.isOfficer;
-      const owners_arr = authPdaInfo.owners.map((x) => x.toString());
-      const signers_arr = authPdaInfo.signers;
-
-      const officer_threshold = authPdaInfo.officerThreshold.toNumber();
-      const total_threshold = authPdaInfo.totalThreshold.toNumber();
-
-      const proposal_is_active = authPdaInfo.proposalIsActive;
-      const proposed_amount = authPdaInfo.proposedAmount.toNumber();
-      const proposed_receiver = authPdaInfo.proposedReceiver.toString();
-
-      // calc approval and compare
-      let total_approved = 0;
-      let officers_approved = 0;
-      for (let i = 0; i<owners_arr.length; i++){
-         console.log("testign i: ", i);
-         if (signers_arr[i]){
-            total_approved += 1;
-            if (is_officer_arr[i]){
-               officers_approved += 1;
-            }
-         }
+      let ms = [];
+      for (let i=0; i<authPdaInfo.bounties.length; i++){
+         let b = authPdaInfo.bounties[i];
+         ms.push({
+            acceptor: b.acceptor.toString(),
+            hunter: b.hunter.toString(),
+            criteria: b.criteria,
+            amount: b.amount.toNumber(),
+         });
       }
 
-      console.log("*****************got total a of ", total_approved, officers_approved);
-      if (total_approved >= total_threshold && officers_approved >= officer_threshold){
-         setSignersHaveApproved(true);
-      }
-      else{
-         setSignersHaveApproved(false);
-      }
-      const multisigState = {
-         treasury_balance,
-         is_officer_arr,
-         owners_arr,
-         signers_arr,
-         officer_threshold,
-         total_threshold,
-         proposal_is_active,
-         proposed_amount,
-         proposed_receiver,
-      }
-      setMultisigState(multisigState);
+      setMultisigState(ms)
+
       setIsLoading(false);
    }
 
-   async function proposeWithdraw(proposed_amount, proposed_receiver) {
+   async function proposeWithdraw(criteria, proposed_amount, proposed_receiver) {
       console.log("calling proposeWithdraw with :", proposed_amount, proposed_receiver);
       setIsLoading(true);
       const provider = await getProvider();
@@ -132,29 +99,37 @@ function App() {
           [Buffer.from(anchor.utils.bytes.utf8.encode(AUTH_PDA_SEED))],
           program.programId
       );
-      const [poolWrappedSol] = await PublicKey.findProgramAddress(
+      const [poolTbo] = await PublicKey.findProgramAddress(
           [Buffer.from(anchor.utils.bytes.utf8.encode(WSOL_POOL_SEED))],
           program.programId
       );
+      proposed_receiver = new PublicKey(proposed_receiver);
 
-      await program.rpc.proposeWithdraw(
-          new PublicKey(proposed_receiver),
-          new anchor.BN(to_lamports(proposed_amount)),
+      await program.rpc.createBounty(
+          criteria,
+          proposed_receiver,
+          new anchor.BN(proposed_amount),
           {
              accounts: {
                 signer: provider.wallet.publicKey,
                 authPda: authPda,
-                poolWrappedSol: poolWrappedSol,
+                poolTbo: poolTbo,
                 systemProgram: SystemProgram.programId,
                 tokenProgram: TOKEN_PROGRAM_ID,
              },
           }
       );
 
+
+
+
       await loadMultisigState();
    }
 
-   async function approveWithdraw() {
+   async function approveWithdraw(index) {
+
+      console.log("approve index", index);
+      return;
 
       setIsLoading(true);
 
@@ -164,19 +139,62 @@ function App() {
           [Buffer.from(anchor.utils.bytes.utf8.encode(AUTH_PDA_SEED))],
           program.programId
       );
+      const [poolTbo] = await PublicKey.findProgramAddress(
+          [Buffer.from(anchor.utils.bytes.utf8.encode(WSOL_POOL_SEED))],
+          program.programId
+      );
 
-      await program.rpc.approveWithdraw(
-          new PublicKey(multisigState.proposed_receiver),
-          new anchor.BN(multisigState.proposed_amount),
+      // load hunter
+      const hunter = multisigState[index].hunter;
+
+      // load mint
+      const connection = new Connection(network);
+      let mint_addy = new PublicKey(TBO_MINT);
+      let tboMint = new Token(connection, mint_addy, TOKEN_PROGRAM_ID, provider.wallet);
+
+      // TODO prove mint is correct
+
+
+
+
+
+
+      let hunter_pk = new PublicKey(hunter);
+
+
+      console.log("initialized tboMint: ", tboMint);
+      console.log("pubkey of mint? ", tboMint.publicKey.toString());
+      console.log("using hunter pk: ",  hunter_pk.toString());
+
+      // let att = await tboMint.createAssociatedTokenAccount(new PublicKey(hunter));
+      // console.log("made att", att);
+      // return;
+
+
+      // check balance
+      let receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(hunter_pk);
+      console.log("got amount before: ", receiverAta.amount.toNumber());
+
+      // get or create token account for give pubkey owner3
+
+      await program.rpc.awardBounty(
+          new anchor.BN(index),
           {
              accounts: {
                 signer: provider.wallet.publicKey,
                 authPda: authPda,
+                poolTbo: poolTbo,
+                proposedReceiver: receiverAta.address,
+                tboMint: tboMint.publicKey,
                 systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
              },
           }
       );
 
+      // check balance
+      receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(new PublicKey(hunter));
+      console.log("got amount before: ", receiverAta.amount.toNumber());
       await loadMultisigState();
    }
 

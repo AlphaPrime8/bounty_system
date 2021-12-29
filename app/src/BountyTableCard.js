@@ -3,21 +3,25 @@ import { Keypair } from "@solana/web3.js";
 
 // sample data
 let sample_bounties = [];
-const ROHDEL_PUBKEY = "D4K5yZR1kcvaX7ZDTUWpGoZM8gHVjC1pxB1m1vSmC5NZ";
-for (let i= 0; i < 10; i++){
-    sample_bounties.push({
-        criteria: "Vote on whether to pass tokenomics proposal.",
-        hunter: Keypair.generate().publicKey.toString(),
-        acceptor: ROHDEL_PUBKEY,
-        amount: 3,
-    })
-}
+// const ROHDEL_PUBKEY = "D4K5yZR1kcvaX7ZDTUWpGoZM8gHVjC1pxB1m1vSmC5NZ";
+// for (let i= 0; i < 10; i++){
+//     sample_bounties.push({
+//         criteria: "Vote on whether to pass tokenomics proposal.",
+//         hunter: Keypair.generate().publicKey.toString(),
+//         acceptor: ROHDEL_PUBKEY,
+//         amount: 3,
+//     })
+// }
 
 function format_pk(pk){
     return pk.slice(0,5) + "..." + pk.slice(-4,pk.length);
 }
 
 const BountyTableCard = ({ approveWithdraw, multisigState }) => {
+
+    function on_award(i){
+        console.log("clicked on ", i);
+    }
 
     return (
         <div className='stake-card'>
@@ -37,15 +41,15 @@ const BountyTableCard = ({ approveWithdraw, multisigState }) => {
                         <th>Award</th>
                         <th>Cancel</th>
                     </tr>
-                    {sample_bounties.map((bounty, i) => {
+                    {multisigState.map((bounty, i) => {
                         return (
-                            <tr>
+                            <tr key={i}>
                                 <td>{bounty.criteria}</td>
                                 <td>{format_pk(bounty.hunter)}</td>
                                 <td>{bounty.amount}</td>
-                                <td>{bounty.amount * 6000}</td>
+                                <td>{bounty.amount * 3000}</td>
                                 <td>{format_pk(bounty.acceptor)}</td>
-                                <td><button>award</button></td>
+                                <td><button onClick={() => approveWithdraw(i)}>award</button></td>
                                 <td><button>cancel</button></td>
                             </tr>
                         );
