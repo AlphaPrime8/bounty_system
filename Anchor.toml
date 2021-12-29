@@ -1,0 +1,14 @@
+[programs.localnet]
+bounty_system = "8tk9cckc1aVcDS9JYEg5EQxHPmDzrLnNFRAYFRJYLi5T"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+#cluster = "testnet"
+cluster = "devnet"
+#cluster = "localnet"
+wallet = "/home/myware/.config/solana/devnet.json"
+
+[scripts]
+test = "yarn run ts-mocha -t 1000000 tests/*.ts"
