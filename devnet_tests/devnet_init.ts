@@ -73,6 +73,16 @@ function to_lamports(num_sol) {
 //
 // }
 
+async function get_ata(){
+
+    const TBO_MINT = "2KRvcgPeyq3sWZMFGNteie1r4mhn1JjSGAqTnDpJbWvm";
+    let mint_addy = new PublicKey(TBO_MINT);
+    let hunter_pk = new PublicKey(BELA_PUPKEY);
+    let tboMint = new Token(connection, mint_addy, TOKEN_PROGRAM_ID, localKeypair);
+    let receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(hunter_pk);
+    console.log("got ata ", receiverAta.address.toString());
+}
+
 async function run_init_pdas() {
 
     // lookup pdas
@@ -135,7 +145,7 @@ async function run_init_pdas() {
 
 }
 
-run_init_pdas()
+get_ata()
     .then(value => {
         console.log("success with value: {}", value);
     })

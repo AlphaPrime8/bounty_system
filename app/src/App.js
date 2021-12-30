@@ -126,10 +126,37 @@ function App() {
       await loadMultisigState();
    }
 
+   async function cancelBounty(index) {
+
+      console.log("cancel index", index);
+
+      setIsLoading(true);
+
+      const provider = await getProvider();
+      const program = new anchor.Program(idl, programID, provider);
+      const [authPda] = await PublicKey.findProgramAddress(
+          [Buffer.from(anchor.utils.bytes.utf8.encode(AUTH_PDA_SEED))],
+          program.programId
+      );
+
+      await program.rpc.cancelBounty(
+          new anchor.BN(index),
+          {
+             accounts: {
+                signer: provider.wallet.publicKey,
+                authPda: authPda,
+                systemProgram: SystemProgram.programId,
+             },
+          }
+      );
+
+      // check balance
+      await loadMultisigState();
+   }
+
    async function approveWithdraw(index) {
 
       console.log("approve index", index);
-      return;
 
       setIsLoading(true);
 
@@ -151,28 +178,15 @@ function App() {
       const connection = new Connection(network);
       let mint_addy = new PublicKey(TBO_MINT);
       let tboMint = new Token(connection, mint_addy, TOKEN_PROGRAM_ID, provider.wallet);
-
-      // TODO prove mint is correct
-
-
-
-
-
-
       let hunter_pk = new PublicKey(hunter);
-
 
       console.log("initialized tboMint: ", tboMint);
       console.log("pubkey of mint? ", tboMint.publicKey.toString());
       console.log("using hunter pk: ",  hunter_pk.toString());
 
-      // let att = await tboMint.createAssociatedTokenAccount(new PublicKey(hunter));
-      // console.log("made att", att);
-      // return;
-
-
       // check balance
       let receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(hunter_pk);
+      console.log("got hunter ata: ", receiverAta.address)
       console.log("got amount before: ", receiverAta.amount.toNumber());
 
       // get or create token account for give pubkey owner3
@@ -193,8 +207,8 @@ function App() {
       );
 
       // check balance
-      receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(new PublicKey(hunter));
-      console.log("got amount before: ", receiverAta.amount.toNumber());
+      receiverAta = await tboMint.getOrCreateAssociatedAccountInfo(hunter_pk);
+      console.log("got amount after: ", receiverAta.amount.toNumber());
       await loadMultisigState();
    }
 
@@ -584,7 +598,6 @@ function App() {
                   <div className='main'>
                      <Header />
 
-
                      <ConnectWalletButton
                          loadMultisigState={loadMultisigState}
                          isLoading={isLoading}
@@ -593,6 +606,7 @@ function App() {
                      <div className='container flex-container'>
                         <BountyTableCard
                             approveWithdraw={approveWithdraw}
+                            cancelBounty={cancelBounty}
                             multisigState={multisigState}
                         />
                      </div>

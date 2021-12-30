@@ -17,11 +17,7 @@ function format_pk(pk){
     return pk.slice(0,5) + "..." + pk.slice(-4,pk.length);
 }
 
-const BountyTableCard = ({ approveWithdraw, multisigState }) => {
-
-    function on_award(i){
-        console.log("clicked on ", i);
-    }
+const BountyTableCard = ({ approveWithdraw, multisigState, cancelBounty }) => {
 
     return (
         <div className='stake-card'>
@@ -50,7 +46,7 @@ const BountyTableCard = ({ approveWithdraw, multisigState }) => {
                                 <td>{bounty.amount * 3000}</td>
                                 <td>{format_pk(bounty.acceptor)}</td>
                                 <td><button onClick={() => approveWithdraw(i)}>award</button></td>
-                                <td><button>cancel</button></td>
+                                <td><button onClick={() => cancelBounty(i)}>cancel</button></td>
                             </tr>
                         );
                     })}
