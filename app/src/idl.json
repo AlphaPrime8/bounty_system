@@ -267,9 +267,19 @@
       "code": 309,
       "name": "TooManyBounties",
       "msg": "Too many bounties"
+    },
+    {
+      "code": 310,
+      "name": "CriteriaTooLong",
+      "msg": "Criteria is too long"
+    },
+    {
+      "code": 311,
+      "name": "MismatchHunter",
+      "msg": "Proposed receiver ata not owned by hunter"
     }
   ],
   "metadata": {
-    "address": "EFyiucgJ2bHU9kHrvkbMvsy6UZ6pnMKZXV7H2bUmciko"
+    "address": "X2223zZ7kqnLzJSot89bn8Z3DhPgVgZxvWBoPRx2yF8"
   }
 }

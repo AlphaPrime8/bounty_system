@@ -1,12 +1,13 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
-declare_id!("EFyiucgJ2bHU9kHrvkbMvsy6UZ6pnMKZXV7H2bUmciko");
+declare_id!("X2223zZ7kqnLzJSot89bn8Z3DhPgVgZxvWBoPRx2yF8");
 
 // config
 const AUTH_PDA_SEED: &[u8] = b"auth_pda_seeds";
 const WSOL_POOL_SEED: &[u8] = b"pool_wrapped_sol_seeds";
-const MAX_BOUNTIES: usize = 300;
+const MAX_BOUNTIES: usize = 100;
+const MAX_CRITERIA_LEN: usize = 30;
 
 #[program]
 pub mod bounty_system {
@@ -18,11 +19,10 @@ pub mod bounty_system {
     ) -> ProgramResult {
         let auth_pda = &mut ctx.accounts.auth_pda;
 
-
         // proposal status variables
         let mut bounties = Vec::new();
         let sample_bounty = Bounty {
-            criteria: String::from("this is a sample bounty criteria"),
+            criteria: String::from("this is a sample bounty."),
             hunter: acceptors[0].clone(),
             acceptor: acceptors[1].clone(),
             amount: 1,
@@ -52,6 +52,11 @@ pub mod bounty_system {
         // check below limit
         if auth_pda.bounties.len() >= MAX_BOUNTIES {
             return Err(ErrorCode::TooManyBounties.into());
+        }
+
+        // check criteria len
+        if criteria.len() > MAX_CRITERIA_LEN {
+            return Err(ErrorCode::CriteriaTooLong.into());
         }
 
         // check if amount of proposed amount is available in treasury
@@ -122,15 +127,16 @@ pub mod bounty_system {
             return Err(ErrorCode::InvalidAuthPda.into());
         }
 
-        // TODO confirm owner of proposed_receiver == hunter
-        // if auth_pda.bounties[index].hunter != ctx.accounts.proposed_receiver.key {
-        //
-        // }
+        // confirm owner of proposed_receiver == hunter
+        if auth_pda.bounties[index as usize].hunter != ctx.accounts.proposed_receiver.owner.key() {
+            return Err(ErrorCode::MismatchHunter.into());
+        }
+
         let amount = auth_pda.bounties[index as usize].amount;
 
         let cpi_accounts = Transfer {
             from: ctx.accounts.pool_tbo.to_account_info(),
-            to: ctx.accounts.proposed_receiver.clone(),
+            to: ctx.accounts.proposed_receiver.to_account_info(),
             authority: ctx.accounts.auth_pda.to_account_info(),
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
@@ -216,7 +222,7 @@ pub struct AwardBounty<'info> {
         bump)]
     pub pool_tbo: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
-    pub proposed_receiver: AccountInfo<'info>,
+    pub proposed_receiver: Account<'info, TokenAccount>,
     pub tbo_mint: Box<Account<'info, Mint>>,
     pub system_program: Program<'info, System>,
     pub token_program: Program<'info, Token>,
@@ -259,5 +265,9 @@ pub enum ErrorCode {
     InvalidVectorLengths,
     #[msg("Too many bounties")]
     TooManyBounties,
+    #[msg("Criteria is too long")]
+    CriteriaTooLong,
+    #[msg("Proposed receiver ata not owned by hunter")]
+    MismatchHunter,
 }
 

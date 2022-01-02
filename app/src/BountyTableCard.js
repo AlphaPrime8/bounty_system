@@ -43,7 +43,7 @@ const BountyTableCard = ({ approveWithdraw, multisigState, cancelBounty }) => {
                                 <td>{bounty.criteria}</td>
                                 <td>{format_pk(bounty.hunter)}</td>
                                 <td>{bounty.amount}</td>
-                                <td>{bounty.amount * 3000}</td>
+                                <td>{bounty.amount * 30}</td>
                                 <td>{format_pk(bounty.acceptor)}</td>
                                 <td><button onClick={() => approveWithdraw(i)}>award</button></td>
                                 <td><button onClick={() => cancelBounty(i)}>cancel</button></td>

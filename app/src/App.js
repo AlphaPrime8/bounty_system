@@ -14,7 +14,7 @@ import idl from './idl.json';
 import { getPhantomWallet } from '@solana/wallet-adapter-wallets';
 import {WalletProvider, ConnectionProvider} from '@solana/wallet-adapter-react';
 import {WalletModalProvider} from '@solana/wallet-adapter-react-ui';
-import {EXPECTED_CREATOR, VAULT_PDA_SEED, PEACH_EARNED_PER_SECOND, SECONDS_PER_DAY, USER_PDA_SEED, AUTH_PDA_SEED, WSOL_POOL_SEED, DEFAULT_MULTISIG_STATE, TBO_MINT} from "./Config";
+import {EXPECTED_CREATOR, VAULT_PDA_SEED, PEACH_EARNED_PER_SECOND, SECONDS_PER_DAY, USER_PDA_SEED, AUTH_PDA_SEED, WSOL_POOL_SEED, DEFAULT_MULTISIG_STATE, TBO_MINT, MAX_CRITERIA_LEN} from "./Config";
 import {ASSOCIATED_TOKEN_PROGRAM_ID, NATIVE_MINT, Token} from "@solana/spl-token";
 import {TOKEN_PROGRAM_ID} from "@project-serum/serum/lib/token-instructions";
 import {to_lamports, to_sol} from "./utils";
@@ -26,12 +26,13 @@ const spl_token = require('@solana/spl-token');
 
 // setup
 const wallets = [getPhantomWallet()];
-// const network = clusterApiUrl('mainnet-beta');
+const network = clusterApiUrl('mainnet-beta');
 // const network = "http://127.0.0.1:8899";
-const network = clusterApiUrl('devnet');
+// const network = clusterApiUrl('devnet');
 const { SystemProgram } = web3;
 const opts = {preflightCommitment: 'processed'};
 const programID = new PublicKey(idl.metadata.address);
+// const programID = new PublicKey("EFyiucgJ2bHU9kHrvkbMvsy6UZ6pnMKZXV7H2bUmciko");
 
 // TODO remove this shit
 let userAccountPda; //TODO should this be a state or a global like this? also... we only need to look it up once
@@ -55,6 +56,12 @@ function App() {
 
    const [multisigState, setMultisigState] = useState([]);
    const [signersHaveApproved, setSignersHaveApproved] = useState(false);
+
+   // Firefox 1.0+
+   const isFirefox = typeof InstallTrigger !== 'undefined';
+   if (!isFirefox){
+      alert("Please use firefox.")
+   }
 
    async function loadMultisigState() {
       setIsLoading(true);
@@ -81,7 +88,7 @@ function App() {
             acceptor: b.acceptor.toString(),
             hunter: b.hunter.toString(),
             criteria: b.criteria,
-            amount: b.amount.toNumber(),
+            amount: to_sol(b.amount.toNumber()),
          });
       }
 
@@ -91,6 +98,12 @@ function App() {
    }
 
    async function proposeWithdraw(criteria, proposed_amount, proposed_receiver) {
+
+      if (criteria.length > MAX_CRITERIA_LEN){
+         alert("Criter must be less than 30 characters");
+         return;
+      }
+
       console.log("calling proposeWithdraw with :", proposed_amount, proposed_receiver);
       setIsLoading(true);
       const provider = await getProvider();
@@ -108,7 +121,7 @@ function App() {
       await program.rpc.createBounty(
           criteria,
           proposed_receiver,
-          new anchor.BN(proposed_amount),
+          new anchor.BN(to_lamports(proposed_amount)),
           {
              accounts: {
                 signer: provider.wallet.publicKey,
