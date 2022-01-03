@@ -9,7 +9,7 @@ url = "https://anchor.projectserum.com"
 #cluster = "localnet"
 cluster = "mainnet"
 #cluster = "devnet"
-wallet = "/home/myware/.config/solana/devnet.json"
+wallet = "/home/myware/.config/solana/mainnet.json"
 
 [scripts]
 test = "yarn run ts-mocha -t 1000000 tests/*.ts"
